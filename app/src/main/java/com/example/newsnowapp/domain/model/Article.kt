@@ -1,4 +1,4 @@
-package com.example.newsnowapp.data.local
+package com.example.newsnowapp.domain.model
 
 data class Article(
     val url: String,

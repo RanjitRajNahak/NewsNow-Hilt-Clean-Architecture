@@ -1,17 +1,19 @@
-package com.example.newsnowapp.ui.navigation
+package com.example.newsnowapp.presentation.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.example.newsnowapp.data.local.Article
-import com.example.newsnowapp.ui.screens.HomeScreen
-import com.example.newsnowapp.ui.screens.DetailScreen
-import com.example.newsnowapp.viewmodel.SearchViewModel
-import com.example.newsnowapp.ui.screens.SearchScreen
-import com.example.newsnowapp.viewmodel.HomeViewModel
-import com.example.newsnowapp.viewmodel.NewsViewModelFactory
+import com.example.newsnowapp.domain.model.Article
+import com.example.newsnowapp.presentation.bookmarks.BookmarksScreen
+import com.example.newsnowapp.presentation.bookmarks.BookmarksViewModel
+import com.example.newsnowapp.presentation.home.HomeScreen
+import com.example.newsnowapp.presentation.detail.DetailScreen
+import com.example.newsnowapp.presentation.search.SearchViewModel
+import com.example.newsnowapp.presentation.search.SearchScreen
+import com.example.newsnowapp.presentation.home.HomeViewModel
+import com.example.newsnowapp.presentation.util.NewsViewModelFactory
 import com.google.gson.Gson
 import java.net.URLDecoder
 import java.net.URLEncoder
@@ -19,6 +21,7 @@ import java.nio.charset.StandardCharsets
 
 sealed class Screen(val route: String) {
     object Home : Screen("home")
+    object Bookmarks : Screen("bookmarks")
     object Detail : Screen("detail/{articleJson}") {
         fun createRoute(article: Article): String {
             // Convert the whole article to a single String
@@ -35,6 +38,7 @@ fun NavGraph(
     navController: NavHostController,
     factory: NewsViewModelFactory
 ) {
+    val repository = factory.repository
     NavHost(
         navController = navController,
         startDestination = Screen.Home.route
@@ -48,7 +52,26 @@ fun NavGraph(
                 },
                 onSearchClick = {
                     navController.navigate(Screen.Search.route) // Navigate to search screen
-                })
+                },
+                onBookmarksClick = {
+                    navController.navigate(Screen.Bookmarks.route) // ◀ Navigates to Bookmarks
+                }
+            )
+        }
+
+        // ◀ NEW: Bookmarks Screen Destination Route Entry Mapping block
+        composable(route = Screen.Bookmarks.route) {
+            // Note: Update your NewsViewModelFactory to return BookmarksViewModel when requested
+            val bookmarksViewModel: BookmarksViewModel = viewModel(factory = factory)
+            BookmarksScreen(
+                viewModel = bookmarksViewModel,
+                onArticleClick = { article ->
+                    navController.navigate(Screen.Detail.createRoute(article))
+                },
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
         }
 
         // Detail Screen
@@ -61,15 +84,18 @@ fun NavGraph(
 
             // 3. Convert it back to your Article object
             val article = Gson().fromJson(decodedJson, Article::class.java)
-            DetailScreen(article = article, onBack = { navController.popBackStack() })
+            DetailScreen(
+                article = article,
+                repository = repository,
+                onBack = { navController.popBackStack() })
         }
 
         // Search Screen
         composable(Screen.Search.route) {
             val searchViewModel: SearchViewModel = viewModel(factory = factory)
-            SearchScreen(viewModel = searchViewModel) { article ->
+            SearchScreen(viewModel = searchViewModel, onBackClick = {navController.popBackStack()}, onArticleClick = { article ->
                 navController.navigate(Screen.Detail.createRoute(article))
-            }
+            })
         }
     }
 }

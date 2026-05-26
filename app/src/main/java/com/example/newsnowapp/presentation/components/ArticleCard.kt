@@ -1,4 +1,4 @@
-package com.example.newsnowapp.ui.components
+package com.example.newsnowapp.presentation.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,7 +11,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.example.newsnowapp.data.local.Article
+import com.example.newsnowapp.domain.model.Article
 
 @Composable
 fun ArticleCard(

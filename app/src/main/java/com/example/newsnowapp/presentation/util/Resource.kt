@@ -1,4 +1,4 @@
-package com.example.newsnowapp.viewmodel
+package com.example.newsnowapp.presentation.util
 
 sealed class Resource<T>(val data: T? = null, val message: String? = null) {
     class Success<T>(data: T) : Resource<T>(data)

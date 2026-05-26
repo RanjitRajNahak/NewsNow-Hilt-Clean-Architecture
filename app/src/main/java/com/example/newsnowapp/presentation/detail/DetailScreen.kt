@@ -1,4 +1,4 @@
-package com.example.newsnowapp.ui.screens
+package com.example.newsnowapp.presentation.detail
 
 import android.view.ViewGroup
 import android.webkit.WebView
@@ -25,19 +25,53 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
-import com.example.newsnowapp.data.local.Article
+import com.example.newsnowapp.domain.model.Article
 import androidx.activity.compose.BackHandler // Add this import
+import androidx.compose.material.icons.filled.Bookmark
+import com.example.newsnowapp.domain.repository.NewsRepository
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DetailScreen(article: Article, onBack: () -> Unit) {
+fun DetailScreen(
+    article: Article,
+    repository: NewsRepository,
+    onBack: () -> Unit) {
     // State to toggle between Summary and WebView
     var showWebView by remember { mutableStateOf(false) }
 
+    var isBookmarked by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    // ◀ NEW: State to manage the Snackbar pop-ups
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(article.url) {
+        isBookmarked = repository.isArticleBookmarked(article.url)
+    }
+
     Scaffold(
+        // ◀ NEW: Connect the host state to your scaffold layout container
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
             if (!showWebView) {
-                DetailBottomBar(onReadFullClick = { showWebView = true })
+                DetailBottomBar(
+                    isBookmarked = isBookmarked,
+                    onReadFullClick = { showWebView = true },
+                    onBookmarkToggle = {
+                        scope.launch {
+                            if (isBookmarked) {
+                                repository.deleteBookmark(article)
+                                isBookmarked = false
+                                // ◀ NEW: Show removal confirmation message
+                                snackbarHostState.showSnackbar("Removed from Bookmarks")
+                            } else {
+                                repository.insertBookmark(article)
+                                isBookmarked = true
+                                // ◀ NEW: Show addition confirmation message
+                                snackbarHostState.showSnackbar("Added to Bookmarks")
+                            }
+                        }
+                    })
             }
         }
     ) { padding ->
@@ -114,13 +148,9 @@ fun DetailScreen(article: Article, onBack: () -> Unit) {
                             onClick = onBack,
                             modifier = Modifier.background(Color.Black.copy(alpha = 0.3f), CircleShape)
                         ) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Color.White)                        }
-                        IconButton(
-                            onClick = {  },
-                            modifier = Modifier.background(Color.Black.copy(alpha = 0.3f), CircleShape)
-                        ) {
-                            Icon(Icons.Default.Share, contentDescription = null, tint = Color.White)
+                            Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Color.White)
                         }
+
                     }
                 }
 
@@ -176,7 +206,11 @@ fun DetailScreen(article: Article, onBack: () -> Unit) {
 }
 
 @Composable
-fun DetailBottomBar(onReadFullClick: () -> Unit) {
+fun DetailBottomBar(
+    isBookmarked: Boolean,
+    onReadFullClick: () -> Unit,
+    onBookmarkToggle: () -> Unit) {
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shadowElevation = 8.dp
@@ -195,11 +229,14 @@ fun DetailBottomBar(onReadFullClick: () -> Unit) {
             Spacer(modifier = Modifier.width(16.dp))
             // Bookmark/Save Toggle Button
             FilledIconButton(
-                onClick = {  },
+                onClick = onBookmarkToggle,
                 modifier = Modifier.size(50.dp),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Icon(Icons.Default.BookmarkBorder, contentDescription = null)
+                Icon(
+                    imageVector = if (isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                    contentDescription = "Toggle Saved State"
+                )
             }
         }
     }

@@ -1,29 +1,44 @@
-package com.example.newsnowapp.ui.screens
+package com.example.newsnowapp.presentation.home
 
+import android.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.newsnowapp.data.local.Article
-import com.example.newsnowapp.viewmodel.Resource
-import com.example.newsnowapp.ui.components.ArticleCard
-import com.example.newsnowapp.viewmodel.HomeViewModel
-import com.example.newsnowapp.viewmodel.SearchViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.newsnowapp.domain.model.Article
+import com.example.newsnowapp.domain.repository.NewsRepository
+import com.example.newsnowapp.presentation.util.Resource
+import com.example.newsnowapp.presentation.components.ArticleCard
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(viewModel: HomeViewModel,
                onArticleClick: (Article) -> Unit,
-               onSearchClick: () -> Unit) {
+               onSearchClick: () -> Unit,
+               onBookmarksClick: () -> Unit) {
     val state = viewModel.articles.value
     val selectedCat = viewModel.selectedCategory.value
 
@@ -33,12 +48,15 @@ fun HomeScreen(viewModel: HomeViewModel,
             viewModel.fetchNews("General")
         }
     }
-
+    var menuExpanded by remember {mutableStateOf(false)}
     Scaffold(
         topBar = {
             Column {
                 CenterAlignedTopAppBar(
                     actions = {
+                        IconButton(onClick = onBookmarksClick) {
+                            Icon(Icons.Default.Bookmark, contentDescription = "Open Bookmarks")
+                        }
                         IconButton(onClick = onSearchClick) {
                             Icon(Icons.Default.Search, contentDescription = "Search")
                         }
@@ -69,6 +87,7 @@ fun HomeScreen(viewModel: HomeViewModel,
                 }
             }
         }
+
     ) { padding ->
         val isRefreshing = state is Resource.Loading && state.data != null
 
@@ -102,3 +121,4 @@ fun HomeScreen(viewModel: HomeViewModel,
         }
     }
 }
+
