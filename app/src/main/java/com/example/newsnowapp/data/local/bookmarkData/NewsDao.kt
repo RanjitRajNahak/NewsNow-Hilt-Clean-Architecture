@@ -1,11 +1,10 @@
-package com.example.newsnowapp.data.local
+package com.example.newsnowapp.data.local.bookmarkData
 
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.example.newsnowapp.data.local.ArticleEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao

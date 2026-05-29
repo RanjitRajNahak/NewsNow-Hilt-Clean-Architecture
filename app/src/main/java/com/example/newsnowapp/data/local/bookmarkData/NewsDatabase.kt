@@ -1,10 +1,9 @@
-package com.example.newsnowapp.data.local
+package com.example.newsnowapp.data.local.bookmarkData
 
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.example.newsnowapp.data.local.ArticleEntity
 
 @Database(
     entities = [ArticleEntity::class],

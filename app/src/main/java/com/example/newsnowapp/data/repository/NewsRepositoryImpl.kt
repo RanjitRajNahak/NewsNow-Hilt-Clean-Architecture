@@ -4,14 +4,15 @@ import com.example.newsnowapp.domain.model.Article
 import com.example.newsnowapp.data.remote.NewsApiService
 import com.example.newsnowapp.data.remote.ArticleDto
 import com.example.newsnowapp.BuildConfig
-import com.example.newsnowapp.data.local.NewsDao
-import com.example.newsnowapp.data.local.toArticle
-import com.example.newsnowapp.data.local.toArticleEntity
+import com.example.newsnowapp.data.local.bookmarkData.NewsDao
+import com.example.newsnowapp.data.local.bookmarkData.toArticle
+import com.example.newsnowapp.data.local.bookmarkData.toArticleEntity
 import com.example.newsnowapp.domain.repository.NewsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import javax.inject.Inject
 
-class NewsRepositoryImpl(
+class NewsRepositoryImpl @Inject constructor(
     private val api: NewsApiService,
     private val newsDao: NewsDao
 ): NewsRepository {

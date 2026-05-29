@@ -1,4 +1,4 @@
-package com.example.newsnowapp.data.local
+package com.example.newsnowapp.data.local.bookmarkData
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

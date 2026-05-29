@@ -3,6 +3,7 @@ package com.example.newsnowapp.presentation.detail
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,8 +12,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,111 +27,92 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import com.example.newsnowapp.domain.model.Article
-import androidx.activity.compose.BackHandler // Add this import
-import androidx.compose.material.icons.filled.Bookmark
-import com.example.newsnowapp.domain.repository.NewsRepository
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailScreen(
     article: Article,
-    repository: NewsRepository,
-    onBack: () -> Unit) {
-    // State to toggle between Summary and WebView
+    viewModel: DetailViewModel, // ◀ Updated: Replaced repository with DetailViewModel
+    onBack: () -> Unit
+) {
     var showWebView by remember { mutableStateOf(false) }
-
-    var isBookmarked by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    // ◀ NEW: State to manage the Snackbar pop-ups
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Check bookmark status safely through ViewModel when opening the article
     LaunchedEffect(article.url) {
-        isBookmarked = repository.isArticleBookmarked(article.url)
+        viewModel.checkBookmarkStatus(article.url)
     }
 
     Scaffold(
-        // ◀ NEW: Connect the host state to your scaffold layout container
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
             if (!showWebView) {
                 DetailBottomBar(
-                    isBookmarked = isBookmarked,
+                    isBookmarked = viewModel.isBookmarked.value,
                     onReadFullClick = { showWebView = true },
                     onBookmarkToggle = {
-                        scope.launch {
-                            if (isBookmarked) {
-                                repository.deleteBookmark(article)
-                                isBookmarked = false
-                                // ◀ NEW: Show removal confirmation message
-                                snackbarHostState.showSnackbar("Removed from Bookmarks")
-                            } else {
-                                repository.insertBookmark(article)
-                                isBookmarked = true
-                                // ◀ NEW: Show addition confirmation message
-                                snackbarHostState.showSnackbar("Added to Bookmarks")
+                        viewModel.toggleBookmark(article) { message ->
+                            scope.launch {
+                                snackbarHostState.showSnackbar(message)
                             }
                         }
-                    })
+                    }
+                )
             }
         }
     ) { padding ->
+        if (showWebView) {
+            var webView: WebView? by remember { mutableStateOf(null) }
 
-            if (showWebView) {
-
-                var webView: WebView? by remember { mutableStateOf(null) }
-
-                //Intercept the back gesture
-                BackHandler(enabled = showWebView) {
-                    if (webView?.canGoBack() == true) {
-                        webView?.goBack() // Go back in the website's history
-                    } else {
-                        showWebView = false // If no more history, go back to the Summary view
-                    }
+            BackHandler(enabled = showWebView) {
+                if (webView?.canGoBack() == true) {
+                    webView?.goBack()
+                } else {
+                    showWebView = false
                 }
+            }
 
-                Column(modifier = Modifier.fillMaxSize()) {
-                    TopAppBar(
-                        title = { Text("Full Article", style = MaterialTheme.typography.titleSmall) },
-                        navigationIcon = {
-                            IconButton(onClick = {
-
-                                if (webView?.canGoBack() == true) {
-                                    webView?.goBack()
-                                } else {
-                                    showWebView = false
-                                }
-                            }) {
-                                Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+            Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+                TopAppBar(
+                    title = { Text("Full Article", style = MaterialTheme.typography.titleSmall) },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            if (webView?.canGoBack() == true) {
+                                webView?.goBack()
+                            } else {
+                                showWebView = false
                             }
+                        }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                         }
-                    )
-                    AndroidView(
-                        factory = { context ->
-                            WebView(context).apply {
-                                layoutParams = ViewGroup.LayoutParams(
-                                    ViewGroup.LayoutParams.MATCH_PARENT,
-                                    ViewGroup.LayoutParams.MATCH_PARENT
-                                )
-                                webViewClient = WebViewClient()
-
-                                settings.javaScriptEnabled = true
-                                loadUrl(article.url)
-                                webView = this // Store the reference
-                            }
-                        },
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-            }else {
-
+                    }
+                )
+                AndroidView(
+                    factory = { context ->
+                        WebView(context).apply {
+                            layoutParams = ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
+                            webViewClient = WebViewClient()
+                            settings.javaScriptEnabled = true
+                            loadUrl(article.url)
+                            webView = this
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        } else {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
+                    .padding(padding)
                     .padding(bottom = 80.dp)
             ) {
-
                 Box(modifier = Modifier.fillMaxWidth().height(300.dp)) {
                     AsyncImage(
                         model = article.urlToImage,
@@ -138,8 +120,6 @@ fun DetailScreen(
                         modifier = Modifier.fillMaxSize().background(Color.DarkGray),
                         contentScale = ContentScale.Crop
                     )
-
-
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -150,10 +130,8 @@ fun DetailScreen(
                         ) {
                             Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Color.White)
                         }
-
                     }
                 }
-
 
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
@@ -162,18 +140,13 @@ fun DetailScreen(
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
-
                     Spacer(modifier = Modifier.height(8.dp))
-
                     Text(
                         text = article.title,
                         style = MaterialTheme.typography.headlineLarge,
                         lineHeight = 32.sp
                     )
-
                     Spacer(modifier = Modifier.height(16.dp))
-
-
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.LightGray),
@@ -190,9 +163,7 @@ fun DetailScreen(
                             )
                         }
                     }
-
                     Spacer(modifier = Modifier.height(24.dp))
-
                     Text(
                         text = article.description ?: "No description available.",
                         style = MaterialTheme.typography.bodyLarge,
@@ -209,8 +180,8 @@ fun DetailScreen(
 fun DetailBottomBar(
     isBookmarked: Boolean,
     onReadFullClick: () -> Unit,
-    onBookmarkToggle: () -> Unit) {
-
+    onBookmarkToggle: () -> Unit
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shadowElevation = 8.dp
@@ -227,7 +198,6 @@ fun DetailBottomBar(
                 Text("Read Full Article ↗")
             }
             Spacer(modifier = Modifier.width(16.dp))
-            // Bookmark/Save Toggle Button
             FilledIconButton(
                 onClick = onBookmarkToggle,
                 modifier = Modifier.size(50.dp),

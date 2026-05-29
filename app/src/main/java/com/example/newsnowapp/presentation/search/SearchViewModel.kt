@@ -8,15 +8,16 @@ import androidx.lifecycle.viewModelScope
 import com.example.newsnowapp.domain.model.Article
 import com.example.newsnowapp.domain.repository.NewsRepository
 import com.example.newsnowapp.presentation.util.Resource
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.launch
 import org.json.JSONArray
+import javax.inject.Inject
 
-class SearchViewModel(
+@HiltViewModel
+class SearchViewModel @Inject constructor(
     private val repository: NewsRepository,
-    context: Context // ◀ 1. Pass Context here to read/write SharedPreferences
-                    /*Since you only need the context to set up sharedPreferences at the very beginning,
-                    you don't need to retain it as a permanent class member field.
-                    You can safely remove the private val keywords*/
+    @ApplicationContext private val context: Context
     ) : ViewModel() {
 
     private val sharedPreferences = context.getSharedPreferences("search_prefs", Context.MODE_PRIVATE)

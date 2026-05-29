@@ -5,21 +5,28 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.example.app1.ui.screens.LoginScreen
+import com.example.app1.ui.screens.SignUpScreen
+import com.example.app1.viewmodel.AuthViewModel
 import com.example.newsnowapp.domain.model.Article
 import com.example.newsnowapp.presentation.bookmarks.BookmarksScreen
 import com.example.newsnowapp.presentation.bookmarks.BookmarksViewModel
 import com.example.newsnowapp.presentation.home.HomeScreen
 import com.example.newsnowapp.presentation.detail.DetailScreen
+import com.example.newsnowapp.presentation.detail.DetailViewModel
 import com.example.newsnowapp.presentation.search.SearchViewModel
 import com.example.newsnowapp.presentation.search.SearchScreen
 import com.example.newsnowapp.presentation.home.HomeViewModel
-import com.example.newsnowapp.presentation.util.NewsViewModelFactory
+//import com.example.newsnowapp.presentation.util.NewsViewModelFactory
 import com.google.gson.Gson
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 sealed class Screen(val route: String) {
+
+    object Login: Screen("login")
+    object SignUp: Screen("signup")
     object Home : Screen("home")
     object Bookmarks : Screen("bookmarks")
     object Detail : Screen("detail/{articleJson}") {
@@ -36,17 +43,52 @@ sealed class Screen(val route: String) {
 @Composable
 fun NavGraph(
     navController: NavHostController,
-    factory: NewsViewModelFactory
+    isLoggedIn: Boolean,
+    authViewModel: AuthViewModel, // <-- 1. Accept it as a parameter here
+    //factory: NewsViewModelFactory,
+    homeViewModel: HomeViewModel,
+    searchViewModel: SearchViewModel,
+    detailViewModel: DetailViewModel,
+    bookmarksViewModel: BookmarksViewModel,
+    isDarkTheme: Boolean,        // ◀ ADD THIS
+    onThemeToggle: () -> Unit    // ◀ ADD THIS
 ) {
-    val repository = factory.repository
+    //val repository = factory.repository
     NavHost(
         navController = navController,
-        startDestination = Screen.Home.route
+        startDestination = if (isLoggedIn) Screen.Home.route else Screen.Login.route
     ) {
+        // 1. Login Screen
+        composable(route = Screen.Login.route) {
+            LoginScreen(
+                authViewModel = authViewModel,
+                onSignUpClick = {
+                    navController.navigate(Screen.SignUp.route)
+                },
+                onLoginSuccess = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // 2. Sign Up Screen
+        composable(route = Screen.SignUp.route) {
+            SignUpScreen(
+                authViewModel = authViewModel,
+                onBackToLogin = {
+                    navController.popBackStack()
+                }
+            )
+        }
         // Home Screen
         composable(route = Screen.Home.route) {
-            val homeViewModel: HomeViewModel = viewModel(factory = factory)
-            HomeScreen(viewModel = homeViewModel,
+            //val homeViewModel: HomeViewModel = viewModel(factory = factory)
+            HomeScreen(
+                viewModel = homeViewModel,
+                isDarkTheme = isDarkTheme,       // ◀ PASS IT HERE
+                onThemeToggle = onThemeToggle,   // ◀ PASS IT HERE
                 onArticleClick = { article ->
                     navController.navigate(Screen.Detail.createRoute(article))
                 },
@@ -55,6 +97,12 @@ fun NavGraph(
                 },
                 onBookmarksClick = {
                     navController.navigate(Screen.Bookmarks.route) // ◀ Navigates to Bookmarks
+                },
+                onLogoutNavigation = {
+                    // ◀ NEW: Navigates back to auth and clears home screen from the backstack history
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
+                    }
                 }
             )
         }
@@ -62,7 +110,7 @@ fun NavGraph(
         // ◀ NEW: Bookmarks Screen Destination Route Entry Mapping block
         composable(route = Screen.Bookmarks.route) {
             // Note: Update your NewsViewModelFactory to return BookmarksViewModel when requested
-            val bookmarksViewModel: BookmarksViewModel = viewModel(factory = factory)
+            //val bookmarksViewModel: BookmarksViewModel = viewModel(factory = factory)
             BookmarksScreen(
                 viewModel = bookmarksViewModel,
                 onArticleClick = { article ->
@@ -86,13 +134,14 @@ fun NavGraph(
             val article = Gson().fromJson(decodedJson, Article::class.java)
             DetailScreen(
                 article = article,
-                repository = repository,
+                //repository = repository,
+                viewModel = detailViewModel,
                 onBack = { navController.popBackStack() })
         }
 
         // Search Screen
         composable(Screen.Search.route) {
-            val searchViewModel: SearchViewModel = viewModel(factory = factory)
+            //val searchViewModel: SearchViewModel = viewModel(factory = factory)
             SearchScreen(viewModel = searchViewModel, onBackClick = {navController.popBackStack()}, onArticleClick = { article ->
                 navController.navigate(Screen.Detail.createRoute(article))
             })

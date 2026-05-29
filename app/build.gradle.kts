@@ -81,8 +81,12 @@ dependencies {
     implementation("androidx.compose.material3:material3:1.2.1")
     implementation("androidx.compose.material:material-icons-extended")
 
-    implementation("androidx.hilt:hilt-lifecycle-viewmodel-compose:1.3.0")
+    // Dagger Hilt (DI)
+    //implementation("androidx.hilt:hilt-lifecycle-viewmodel-compose:1.3.0")
     implementation("com.google.dagger:hilt-android:2.59.2")
     ksp("com.google.dagger:hilt-android-compiler:2.59.2")
-    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    //implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+
+    // DataStore (For Step 5: Keeping user logged in)
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
 }
