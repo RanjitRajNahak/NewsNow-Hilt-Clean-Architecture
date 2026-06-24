@@ -11,6 +11,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,15 +33,16 @@ fun BookmarksScreen(
     onArticleClick: (Article) -> Unit,
     onBackClick: () -> Unit
 ) {
-    val bookmarkedList = viewModel.bookmarkedArticles.value
+    val bookmarkedList by viewModel.bookmarkedArticles.collectAsState()
 
-    // ◀ NEW: State to show/hide confirmation dialog
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    // ◀ 3. FIX: Define the missing coroutine scope here
     val scope = rememberCoroutineScope()
 
-    // ◀ NEW: Confirmation Pop-Up Dialog
+    LaunchedEffect(key1 = Unit) {
+        viewModel.getBookmarkedArticles()
+    }
+
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -52,7 +55,7 @@ fun BookmarksScreen(
                         showDeleteDialog = false
                     }
                 ) {
-                    Text("Clear All", color = MaterialTheme.colorScheme.error)
+                    Text("Clear All", color = Color.Red)
                 }
             },
             dismissButton = {
@@ -72,7 +75,6 @@ fun BookmarksScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Go back")
                     }
                 },
-                // ◀ NEW: Adds the Trash Sweep icon at top-right, visible only if items exist
                 actions = {
                     if (bookmarkedList.isNotEmpty()) {
                         IconButton(onClick = { showDeleteDialog = true }) {
@@ -102,32 +104,27 @@ fun BookmarksScreen(
                 modifier = Modifier.fillMaxSize().padding(paddingValues),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {// Use url as key to keep animations stable and prevent items jumping around
+            ) {
                 items(items = bookmarkedList, key = { it.url }) { article ->
 
-                    // 1. Maintain the state of the swipe gesture for this item
-                    val dismissState = rememberSwipeToDismissBoxState(
-                        confirmValueChange = { dismissValue ->
+                    val dismissState = rememberSwipeToDismissBoxState()
+
+                    SwipeToDismissBox(
+                        state = dismissState,
+                        enableDismissFromStartToEnd = false,
+                        enableDismissFromEndToStart = true,
+                        onDismiss = { dismissValue ->
                             when (dismissValue) {
                                 SwipeToDismissBoxValue.EndToStart -> {
-                                    // Trigger deletion when swiped completely from right to left
                                     scope.launch {
                                         viewModel.deleteBookmark(article)
                                     }
-                                    true
                                 }
-                                else -> false
+                                else -> {}
                             }
-                        }
-                    )
-
-                    // 2. Wrap your card layout inside the Swipe container
-                    SwipeToDismissBox(
-                        state = dismissState,
-                        enableDismissFromStartToEnd = false, // Disables swiping from left to right
-                        enableDismissFromEndToStart = true,  // Enables swiping from right to left
+                        },
                         backgroundContent = {
-                            // Determine background color based on swipe progress
+
                             val color by animateColorAsState(
                                 targetValue = when (dismissState.targetValue) {
                                     SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
@@ -154,7 +151,6 @@ fun BookmarksScreen(
                             }
                         }
                     ) {
-                        // 3. The actual foreground item content
                         ArticleCard(
                             article = article,
                             onClick = { onArticleClick(article) }

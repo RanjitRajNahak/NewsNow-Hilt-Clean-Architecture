@@ -17,8 +17,4 @@ interface NewsApiService {
         @Query("q") query: String,
         @Query("apiKey") apiKey: String
     ): NewsResponseDto
-
-    companion object {
-        const val BASE_URL = "https://newsapi.org/v2/"
-    }
 }

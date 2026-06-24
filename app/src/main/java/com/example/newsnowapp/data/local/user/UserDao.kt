@@ -1,5 +1,4 @@
-package com.example.app1.data.local
-
+package com.example.newsnowapp.data.local.user
 
 import androidx.room.Dao
 import androidx.room.Insert
@@ -8,9 +7,9 @@ import androidx.room.Query
 
 @Dao
 interface UserDao {
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun registerUser(user: User)
 
-    @Query("SELECT * FROM user_table WHERE email = :email LIMIT 1")
+    @Query("SELECT * FROM users WHERE email = :email LIMIT 1")
     suspend fun getUserByEmail(email: String): User?
 }

@@ -67,7 +67,6 @@ dependencies {
     // Retrofit (Networking)
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
     // Room (Local Database)
     val room_version = "2.8.4"
@@ -82,11 +81,6 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
 
     // Dagger Hilt (DI)
-    //implementation("androidx.hilt:hilt-lifecycle-viewmodel-compose:1.3.0")
     implementation("com.google.dagger:hilt-android:2.59.2")
     ksp("com.google.dagger:hilt-android-compiler:2.59.2")
-    //implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
-
-    // DataStore (For Step 5: Keeping user logged in)
-    implementation("androidx.datastore:datastore-preferences:1.0.0")
 }

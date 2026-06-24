@@ -1,8 +1,8 @@
 package com.example.newsnowapp.di
 
 import android.content.Context
-import com.example.newsnowapp.data.local.bookmarkData.NewsDao
-import com.example.newsnowapp.data.local.bookmarkData.NewsDatabase
+import com.example.newsnowapp.data.local.bookmarks.NewsDao
+import com.example.newsnowapp.data.local.bookmarks.NewsDatabase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

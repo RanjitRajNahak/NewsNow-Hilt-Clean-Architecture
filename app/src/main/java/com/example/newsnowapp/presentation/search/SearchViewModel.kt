@@ -1,8 +1,6 @@
 package com.example.newsnowapp.presentation.search
 
 import android.content.Context
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.newsnowapp.domain.model.Article
@@ -10,6 +8,9 @@ import com.example.newsnowapp.domain.repository.NewsRepository
 import com.example.newsnowapp.presentation.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import javax.inject.Inject
@@ -22,18 +23,17 @@ class SearchViewModel @Inject constructor(
 
     private val sharedPreferences = context.getSharedPreferences("search_prefs", Context.MODE_PRIVATE)
 
-    private val _searchResults = mutableStateOf<Resource<List<Article>>>(Resource.Success(emptyList()))
-    val searchResults: State<Resource<List<Article>>> = _searchResults
+    companion object {
+        private const val KEY_SEARCH_HISTORY = "search_history"
+    }
 
-    // ◀ 2. Initialize the state by loading saved history from SharedPreferences instantly
-    private val _recentSearches = mutableStateOf<List<String>>(loadRecentSearches())
-    val recentSearches: State<List<String>> = _recentSearches
+    private val _searchResults = MutableStateFlow<Resource<List<Article>>>(Resource.Success(emptyList()))
+    val searchResults: StateFlow<Resource<List<Article>>> = _searchResults.asStateFlow()
+    private val _recentSearches = MutableStateFlow<List<String>>(loadRecentSearches())
+    val recentSearches: StateFlow<List<String>> = _recentSearches.asStateFlow()
 
     fun searchNews(query: String) {
         if (query.isEmpty()) return
-
-        // ◀ NEW: Save search query to history list
-        addQueryToHistory(query.trim())
 
         viewModelScope.launch {
             _searchResults.value = Resource.Loading()
@@ -42,44 +42,38 @@ class SearchViewModel @Inject constructor(
                 if (result.isNotEmpty()) {
                     _searchResults.value = Resource.Success(result)
                 } else {
-                    // Send an empty success indicator instead of an error,
-                    // this allows us to handle the proper "No results" UI explicitly
                     _searchResults.value = Resource.Success(emptyList())
                 }
             } catch (e: Exception) {
-                _searchResults.value = Resource.Error(e.message ?: "Search failed")
+                _searchResults.value = Resource.Error("Please check you Internet Connection")
             }
         }
-
-        // ◀ NEW: Appends search terms to the history stack cleanly without duplicates
     }
 
-    private fun addQueryToHistory(query: String) {
+    fun addQueryToHistory(query: String) {
         val currentList = _recentSearches.value.toMutableList()
-        currentList.remove(query) // Remove it if it exists to bump it to the front
-        currentList.add(0, query) // Insert newest query at the beginning
-        val updatedList = currentList.take(10) // Restrict history memory length to 10 items
+        currentList.remove(query)
+        currentList.add(0, query)
+        val updatedList = currentList.take(10)
         _recentSearches.value = updatedList
-        saveRecentSearches(updatedList) // ◀ 3. Save changes to SharedPreferences
+        saveRecentSearches(updatedList)
     }
 
-    // ◀ NEW: Dismiss individual query chips from history list
     fun removeQueryFromHistory(query: String) {
         val currentList = _recentSearches.value.toMutableList()
         currentList.remove(query)
         _recentSearches.value = currentList
-        saveRecentSearches(currentList) // ◀ 4. Save changes to SharedPreferences
+        saveRecentSearches(currentList)
     }
 
-    // ◀ 5. Helper function to serialize list into a JSON string and store it
     private fun saveRecentSearches(list: List<String>) {
         val jsonArray = JSONArray(list)
-        sharedPreferences.edit().putString("recent_searches_key", jsonArray.toString()).apply()
+        val jsonString = jsonArray.toString()
+        sharedPreferences.edit().putString(KEY_SEARCH_HISTORY, jsonString).apply()
     }
 
-    // ◀ 6. Helper function to parse JSON string back into a standard list on initialization
     private fun loadRecentSearches(): List<String> {
-        val jsonString = sharedPreferences.getString("recent_searches_key", null) ?: return emptyList()
+        val jsonString = sharedPreferences.getString(KEY_SEARCH_HISTORY, null) ?: return emptyList()
         return try {
             val jsonArray = JSONArray(jsonString)
             val list = mutableListOf<String>()

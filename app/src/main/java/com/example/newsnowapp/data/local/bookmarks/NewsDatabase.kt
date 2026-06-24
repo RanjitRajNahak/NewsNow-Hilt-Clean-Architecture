@@ -1,4 +1,4 @@
-package com.example.newsnowapp.data.local.bookmarkData
+package com.example.newsnowapp.data.local.bookmarks
 
 import android.content.Context
 import androidx.room.Database
@@ -25,7 +25,7 @@ abstract class NewsDatabase : RoomDatabase() {
                     NewsDatabase::class.java,
                     "news_now_db"
                 )
-                    .fallbackToDestructiveMigration() // Wipes database if version increases with schema changes
+                    .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance

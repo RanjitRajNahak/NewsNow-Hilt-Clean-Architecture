@@ -1,7 +1,9 @@
 package com.example.newsnowapp.presentation.detail
 
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.newsnowapp.domain.model.Article
@@ -14,6 +16,9 @@ import javax.inject.Inject
 class DetailViewModel @Inject constructor(
     private val repository: NewsRepository
 ) : ViewModel() {
+
+    var showWebView by mutableStateOf(false)
+
 
     private val _isBookmarked = mutableStateOf(false)
     val isBookmarked: State<Boolean> = _isBookmarked

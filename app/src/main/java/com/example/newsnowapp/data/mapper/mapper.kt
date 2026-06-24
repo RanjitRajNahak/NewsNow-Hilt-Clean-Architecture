@@ -1,21 +1,24 @@
-package com.example.newsnowapp.data.local.bookmarkData
+package com.example.newsnowapp.data.mapper
 
-import androidx.room.Entity
-import androidx.room.PrimaryKey
+import com.example.newsnowapp.data.local.bookmarks.ArticleEntity
+import com.example.newsnowapp.data.remote.ArticleDto
 import com.example.newsnowapp.domain.model.Article
 
-@Entity(tableName = "bookmarked_articles")
-data class ArticleEntity(
-    @PrimaryKey val url: String, // Web URL acts as a perfect unique identifier
-    val title: String,
-    val author: String?,
-    val sourceName: String,
-    val description: String?,
-    val urlToImage: String?,
-    val publishedAt: String,
-    val content: String?,
-    val category: String
-)
+// Extension function to transform Network data to Domain data
+fun ArticleDto.toArticle(category: String): Article {
+    return Article(
+        url = this.url,
+        title = this.title,
+        author = this.author ?: "Unknown",
+        sourceName = this.source.name,
+        description = this.description,
+        urlToImage = this.urlToImage,
+        publishedAt = this.publishedAt,
+        content = this.content,
+        category = category,
+        isBookmarked = false
+    )
+}
 
 // Extension function to convert Database Entity to Domain Model
 fun ArticleEntity.toArticle(): Article {
@@ -29,7 +32,7 @@ fun ArticleEntity.toArticle(): Article {
         publishedAt = publishedAt,
         content = content,
         category = category,
-        isBookmarked = true // If it is in this table, it is bookmarked
+        isBookmarked = true
     )
 }
 

@@ -1,73 +1,85 @@
 package com.example.newsnowapp.presentation.home
 
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.newsnowapp.data.repository.AuthRepository
 import com.example.newsnowapp.domain.model.Article
 import com.example.newsnowapp.domain.repository.NewsRepository
 import com.example.newsnowapp.presentation.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+data class HomeArticles(
+    val breakingArticles: Resource<List<Article>> = Resource.Loading(),
+    val generalArticles: Resource<List<Article>> = Resource.Loading()
+)
+
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val repository: NewsRepository,
-    private val authRepository: AuthRepository // ◀ NEW: Inject your Auth repository here
-    ) : ViewModel() {
+    private val repository: NewsRepository
+) : ViewModel() {
 
-    private val _articles = mutableStateOf<Resource<List<Article>>>(Resource.Loading())
-    val articles: State<Resource<List<Article>>> = _articles
+    private val _homeArticles = MutableStateFlow(HomeArticles())
+    val homeArticles: StateFlow<HomeArticles> = _homeArticles.asStateFlow()
 
-
-    //The list of categories for the tabs
     val categories = listOf(
         "General", "Business", "Technology", "Sports", "Health", "Entertainment", "Science"
     )
 
-    //Track the selected tab
-    private val _selectedCategory = mutableStateOf("General")
-    val selectedCategory: State<String> = _selectedCategory
+    private val _selectedCategory = MutableStateFlow("Business")
+    val selectedCategory: StateFlow<String> = _selectedCategory.asStateFlow()
 
     fun fetchNews(category: String) {
         _selectedCategory.value = category
+
         viewModelScope.launch {
-            _articles.value = Resource.Loading()
-            val result = repository.getTopHeadlines(category.lowercase())
-            if (result.isNotEmpty()) {
-                _articles.value = Resource.Success(result)
-            } else {
-                _articles.value = Resource.Error("Couldn't fetch $category news")
-            }
+
+            _homeArticles.value = HomeArticles(
+                breakingArticles = Resource.Loading(),
+                generalArticles = Resource.Loading()
+            )
+
+            val breakingDeferred = async(Dispatchers.IO) { fetchBreakingNews(category.lowercase()) }
+            val generalDeferred = async(Dispatchers.IO) { fetchGeneralNews(category.lowercase()) }
+
+            val breakingResult = breakingDeferred.await()
+            val generalResult = generalDeferred.await()
+
+            _homeArticles.value = HomeArticles(
+                breakingArticles = breakingResult,
+                generalArticles = generalResult
+            )
         }
     }
 
-    // ◀ NEW: Separate state to hold trending carousel articles
-    private val _trendingArticles = mutableStateOf<Resource<List<Article>>>(Resource.Loading())
-    val trendingArticles: State<Resource<List<Article>>> = _trendingArticles
-
-    // ◀ NEW: Fetches top general breaking news once on startup
-    fun fetchTrendingNews() {
-        viewModelScope.launch {
-            _trendingArticles.value = Resource.Loading()
-            // We use 'general' or an empty query to pull the absolute latest top breaking news
-            val result = repository.getTopHeadlines("general")
+    private suspend fun fetchBreakingNews(category: String): Resource<List<Article>> {
+        return try {
+            val result = repository.getTopHeadlines(category)
             if (result.isNotEmpty()) {
-                // Take the top 5-7 articles to keep the carousel snappy and relevant
-                _trendingArticles.value = Resource.Success(result.take(7))
+                Resource.Success(result)
             } else {
-                _trendingArticles.value = Resource.Error("Couldn't load trending news")
+                Resource.Success(emptyList())
             }
+        } catch (e: Exception) {
+            Resource.Error("Couldn't load trending news")
         }
     }
 
-    // ◀ NEW: Handle Session Deletion on a background thread Coroutine
-    fun logout(onLogoutComplete: () -> Unit) {
-        viewModelScope.launch {
-            authRepository.logoutUser() // Clears DataStore values via SessionManager
-            onLogoutComplete() // Triggers navigation route back to login screen
+    private suspend fun fetchGeneralNews(category: String): Resource<List<Article>> {
+        return try {
+            val result = repository.searchNews(category)
+            if (result.isNotEmpty()) {
+                Resource.Success(result)
+            } else {
+                Resource.Success(emptyList())
+            }
+        } catch (e: Exception) {
+            Resource.Error("Please Check your Internet Connection")
         }
     }
 }

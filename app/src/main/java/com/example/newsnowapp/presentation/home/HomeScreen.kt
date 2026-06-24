@@ -1,73 +1,91 @@
 package com.example.newsnowapp.presentation.home
 
-import android.R
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SecondaryScrollableTabRow
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.Text
 import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
 import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import coil.compose.AsyncImage
-import com.example.app1.viewmodel.AuthViewModel
 import com.example.newsnowapp.domain.model.Article
-import com.example.newsnowapp.domain.repository.NewsRepository
-import com.example.newsnowapp.presentation.util.Resource
 import com.example.newsnowapp.presentation.components.ArticleCard
-import kotlinx.coroutines.launch
+import com.example.newsnowapp.presentation.util.Resource
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(viewModel: HomeViewModel,
-               isDarkTheme: Boolean,        // ◀ ADD THIS
-               onThemeToggle: () -> Unit,    // ◀ ADD THIS
-               onArticleClick: (Article) -> Unit,
-               onSearchClick: () -> Unit,
-               onBookmarksClick: () -> Unit,
-               onLogoutNavigation: () -> Unit // ◀ NEW: Callback to route user back to Login screen
-     ) {
-    val state = viewModel.articles.value
-    val trendingState = viewModel.trendingArticles.value // ◀ NEW: Observe trending data
-    val selectedCat = viewModel.selectedCategory.value
+fun HomeScreen(
+    viewModel: HomeViewModel,
+    isDarkTheme: Boolean,
+    onThemeToggle: () -> Unit,
+    onArticleClick: (Article) -> Unit,
+    onSearchClick: () -> Unit,
+    onBookmarksClick: () -> Unit,
+    onLogoutNavigation: () -> Unit
+) {
+    val homeArticles by viewModel.homeArticles.collectAsState()
+    val breakingState = homeArticles.breakingArticles
+    val generalState = homeArticles.generalArticles
+    val selectedCat by viewModel.selectedCategory.collectAsState()
 
-    // ◀ NEW: Local state to track if the dropdown menu is open or closed
     var menuExpanded by remember { mutableStateOf(false) }
 
-    // This runs only ONCE when the HomeScreen enters the Composition
     LaunchedEffect(Unit) {
-        if (state !is Resource.Success) {
+        if (breakingState !is Resource.Success && generalState !is Resource.Success) {
             viewModel.fetchNews("General")
-        }
-        // ◀ NEW: Fetch trending news alongside standard news on startup
-        if (trendingState !is Resource.Success) {
-            viewModel.fetchTrendingNews()
         }
     }
 
@@ -75,7 +93,6 @@ fun HomeScreen(viewModel: HomeViewModel,
         topBar = {
             Column {
                 CenterAlignedTopAppBar(
-                    // ◀ NEW: Left Navigation Menu Anchor with Dropdown
                     navigationIcon = {
                         Box {
                             IconButton(onClick = { menuExpanded = true }) {
@@ -91,21 +108,19 @@ fun HomeScreen(viewModel: HomeViewModel,
                                 DropdownMenuItem(
                                     text = { Text("Logout") },
                                     leadingIcon = {
-                                        Icon(Icons.Default.Settings, contentDescription = "Logout")
+                                        Icon(Icons.Default.Logout, contentDescription = "Logout")
                                     },
                                     onClick = {
+                                        onLogoutNavigation()
                                         menuExpanded = false
-                                        // Trigger ViewModel logout and then pass navigation upwards
-                                        viewModel.logout {
-                                            onLogoutNavigation()
-                                        }
                                     }
                                 )
                             }
                         }
                     },
+                    title = { Text("NewsNow", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.primary) },
                     actions = {
-                        // ◀ NEW: MANUAL THEME TOGGLE BUTTON
+
                         IconButton(onClick = onThemeToggle) {
                             Icon(
                                 imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
@@ -115,56 +130,100 @@ fun HomeScreen(viewModel: HomeViewModel,
                         IconButton(onClick = onSearchClick) {
                             Icon(Icons.Default.Search, contentDescription = "Search")
                         }
-                    },
-                    title = { Text("NewsNow", style = MaterialTheme.typography.headlineLarge) }
+                    }
                 )
 
-                // ◀ NEW: TRENDING NEWS IMAGE CAROUSEL SECTION
-                if (trendingState is Resource.Success && !trendingState.data.isNullOrEmpty()) {
-                    val carouselState = rememberCarouselState { trendingState.data.size }
+                SecondaryScrollableTabRow(
+                    selectedTabIndex = viewModel.categories.indexOf(selectedCat),
+                    containerColor = MaterialTheme.colorScheme.background,
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    edgePadding = 16.dp
+                ) {
+                    viewModel.categories.forEach { category ->
+                        Tab(
+                            selected = selectedCat == category,
+                            onClick = {
+                                viewModel.fetchNews(category) },
+                            text = {
+                                Text(
+                                    text = category,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = if (selectedCat == category) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = onBookmarksClick,
+                containerColor = MaterialTheme.colorScheme.surface, // Background Color
+                contentColor = MaterialTheme.colorScheme.primary  // Contrast to Background
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Bookmark,
+                    contentDescription = "Open Bookmarks"
+                )
+            }
+        }
 
-                    // ◀ NEW: 4-Second Auto-Scroll Timer Engine
-                    LaunchedEffect(key1 = trendingState.data.size) {
-                        val totalItems = trendingState.data.size
+    ) { padding ->
+
+        val isRefreshing = false
+
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                viewModel.fetchNews(selectedCat) },
+            modifier = Modifier.fillMaxSize().padding(padding)
+        ) {
+
+            Column(modifier = Modifier.padding()) {
+                if (breakingState is Resource.Success && !breakingState.data.isNullOrEmpty()) {
+                    val carouselState = rememberCarouselState { breakingState.data.size }
+
+                    LaunchedEffect(key1 = breakingState.data.size) {
+                        val totalItems = breakingState.data.size
                         if (totalItems > 1) {
                             while (true) {
-                                kotlinx.coroutines.delay(4000) // Wait exactly 4 seconds
+                                delay(3000)
 
-                                // 1. Fixed property: read current position using .currentItem
                                 val nextItem = (carouselState.currentItem + 1) % totalItems
 
-                                // 2. Fixed method: call .animateScrollToItem instead of page
                                 carouselState.animateScrollToItem(nextItem)
                             }
                         }
                     }
 
-                    Column(modifier = Modifier.padding(bottom = 8.dp)) {
+                    Column(modifier = Modifier.padding(top = 10.dp, bottom = 10.dp)) {
                         Text(
-                            text = "Trending News",
+                            text = "Breaking News",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
                         )
 
                         HorizontalMultiBrowseCarousel(
                             state = carouselState,
-                            preferredItemWidth = 320.dp, // Sets the width layout profile for each item card
+                            preferredItemWidth = 320.dp,
                             itemSpacing = 8.dp,
                             contentPadding = PaddingValues(horizontal = 16.dp),
                             modifier = Modifier.height(180.dp)
+                                .background(MaterialTheme.colorScheme.background)
                         ) { index ->
-                            val article = trendingState.data[index]
+                            val article = breakingState.data[index]
 
-                            // Wrapping card with full click handler to open details screen
                             Card(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .clickable { onArticleClick(article) },
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                             ) {
                                 Box(modifier = Modifier.fillMaxSize()) {
-                                    // Main Headline Background Image Image
+
                                     AsyncImage(
                                         model = article.urlToImage,
                                         contentDescription = article.title,
@@ -172,13 +231,11 @@ fun HomeScreen(viewModel: HomeViewModel,
                                         modifier = Modifier.fillMaxSize()
                                     )
 
-                                    // Gradient Shader Box to make overlapping text highly readable
                                     Surface(
-                                        color = Color.Black.copy(alpha = 0.45f),
+                                        color = Color.Black.copy(alpha = 0.5f),
                                         modifier = Modifier.fillMaxSize()
                                     ) {}
 
-                                    // Article Details Text placed over the bottom of the card
                                     Column(
                                         modifier = Modifier
                                             .align(Alignment.BottomStart)
@@ -187,7 +244,7 @@ fun HomeScreen(viewModel: HomeViewModel,
                                         Text(
                                             text = article.sourceName,
                                             style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.primaryContainer,
+                                            color = MaterialTheme.colorScheme.primary,
                                             fontWeight = FontWeight.Bold
                                         )
                                         Spacer(modifier = Modifier.height(4.dp))
@@ -206,73 +263,61 @@ fun HomeScreen(viewModel: HomeViewModel,
                     }
                 }
 
-                ScrollableTabRow(
-                    selectedTabIndex = viewModel.categories.indexOf(selectedCat),
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.primary,
-                    edgePadding = 16.dp,
-                    divider = {}
-                ) {
-                    viewModel.categories.forEach { category ->
-                        Tab(
-                            selected = selectedCat == category,
-                            onClick = { viewModel.fetchNews(category) },
-                            text = {
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outline,
+                    thickness = 1.dp
+                )
+
+                Box(modifier = Modifier.fillMaxSize()) {
+
+                    when (generalState) {
+                        is Resource.Loading -> {
+                            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                        }
+
+                        is Resource.Success -> {
+                            LazyColumn() {
+                                items(generalState.data ?: emptyList()) { article ->
+                                    ArticleCard(
+                                        article = article,
+                                        onClick = { onArticleClick(article) }
+                                    )
+                                }
+                            }
+                        }
+
+                        is Resource.Error -> {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp)
+                                    .align(Alignment.Center),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(80.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant), //slight variant or grayish from surface
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.SearchOff,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(40.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(20.dp))
                                 Text(
-                                    text = category,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = if (selectedCat == category) FontWeight.Bold else FontWeight.Normal
+                                    text = generalState.message ?: "Unknown Error",
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                        )
-                    }
-                }
-            }
-        },
-        // ◀ NEW: FLOATING ACTION BUTTON IMPLEMENTATION
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = onBookmarksClick,
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Bookmark,
-                    contentDescription = "Open Bookmarks"
-                )
-            }
-        }
-
-    ) { padding ->
-        val isRefreshing = state is Resource.Loading && state.data != null
-
-        PullToRefreshBox(
-            isRefreshing = isRefreshing,
-            onRefresh = { viewModel.fetchNews(selectedCat)
-                viewModel.fetchTrendingNews() // ◀ Pull to refresh updates the carousel too!
-                 },
-            modifier = Modifier.fillMaxSize().padding(padding)
-        ) {
-            when (state) {
-                is Resource.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
-                is Resource.Success -> {
-                    LazyColumn(contentPadding = PaddingValues(bottom = 16.dp)) {
-                        items(state.data ?: emptyList()) { article ->
-                            ArticleCard(
-                                article = article,
-                                onClick = { onArticleClick(article) }
-                            )
                         }
                     }
-                }
-                is Resource.Error -> {
-                    Text(
-                        text = state.message ?: "Unknown Error",
-                        modifier = Modifier.align(Alignment.Center),
-                        color = MaterialTheme.colorScheme.error
-                    )
                 }
             }
         }

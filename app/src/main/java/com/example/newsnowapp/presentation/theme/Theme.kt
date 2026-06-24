@@ -11,11 +11,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80,
+    primary = DeepBlue,
+    secondary = AmberAccent,
     background = BackgroundDark,
-    surface = SurfaceDark
+    surface = SurfaceDark,
+    outline = Divider
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -23,32 +23,22 @@ private val LightColorScheme = lightColorScheme(
     secondary = AmberAccent,
     background = BackgroundLight,
     surface = SurfaceLight,
-    outlineVariant = DividerLight
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    outline = Divider
 )
 
 @Composable
 fun NewsNowAppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
+        // Android 12+
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-
+        //Android <12
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }

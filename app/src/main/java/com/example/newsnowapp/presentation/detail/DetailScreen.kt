@@ -5,7 +5,18 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,8 +25,26 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,14 +62,12 @@ import kotlinx.coroutines.launch
 @Composable
 fun DetailScreen(
     article: Article,
-    viewModel: DetailViewModel, // ◀ Updated: Replaced repository with DetailViewModel
+    viewModel: DetailViewModel,
     onBack: () -> Unit
 ) {
-    var showWebView by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Check bookmark status safely through ViewModel when opening the article
     LaunchedEffect(article.url) {
         viewModel.checkBookmarkStatus(article.url)
     }
@@ -48,10 +75,10 @@ fun DetailScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
-            if (!showWebView) {
+            if (!viewModel.showWebView) {
                 DetailBottomBar(
                     isBookmarked = viewModel.isBookmarked.value,
-                    onReadFullClick = { showWebView = true },
+                    onReadFullClick = { viewModel.showWebView = true },
                     onBookmarkToggle = {
                         viewModel.toggleBookmark(article) { message ->
                             scope.launch {
@@ -63,32 +90,20 @@ fun DetailScreen(
             }
         }
     ) { padding ->
-        if (showWebView) {
+        if (viewModel.showWebView) {
             var webView: WebView? by remember { mutableStateOf(null) }
 
-            BackHandler(enabled = showWebView) {
+            BackHandler(enabled = viewModel.showWebView) {
                 if (webView?.canGoBack() == true) {
                     webView?.goBack()
                 } else {
-                    showWebView = false
+                    viewModel.showWebView = false
                 }
             }
 
-            Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-                TopAppBar(
-                    title = { Text("Full Article", style = MaterialTheme.typography.titleSmall) },
-                    navigationIcon = {
-                        IconButton(onClick = {
-                            if (webView?.canGoBack() == true) {
-                                webView?.goBack()
-                            } else {
-                                showWebView = false
-                            }
-                        }) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                        }
-                    }
-                )
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
                 AndroidView(
                     factory = { context ->
                         WebView(context).apply {
@@ -96,80 +111,86 @@ fun DetailScreen(
                                 ViewGroup.LayoutParams.MATCH_PARENT,
                                 ViewGroup.LayoutParams.MATCH_PARENT
                             )
-                            webViewClient = WebViewClient()
-                            settings.javaScriptEnabled = true
+                            webViewClient = WebViewClient()   // To avoid opening it in device browser
+                            settings.javaScriptEnabled = true // Rendering
                             loadUrl(article.url)
-                            webView = this
+                            webView = this                    // Saved website reference
                         }
                     },
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize().statusBarsPadding()
                 )
             }
         } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(padding)
-                    .padding(bottom = 80.dp)
+            Box(
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Box(modifier = Modifier.fillMaxWidth().height(300.dp)) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = 80.dp)
+                ) {
                     AsyncImage(
                         model = article.urlToImage,
                         contentDescription = null,
-                        modifier = Modifier.fillMaxSize().background(Color.DarkGray),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(300.dp)
+                            .background(Color.DarkGray),
                         contentScale = ContentScale.Crop
                     )
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        IconButton(
-                            onClick = onBack,
-                            modifier = Modifier.background(Color.Black.copy(alpha = 0.3f), CircleShape)
-                        ) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Color.White)
+
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            text = article.category.uppercase(),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = article.title,
+                            style = MaterialTheme.typography.headlineLarge,
+                            lineHeight = 32.sp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(article.sourceName.take(1), color = MaterialTheme.colorScheme.surface)
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(text = article.sourceName, fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = "${article.publishedAt.take(10)}",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
                         }
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text(
+                            text = article.description ?: "No description available.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            lineHeight = 26.sp,
+                            color = Color.Gray
+                        )
                     }
                 }
-
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Text(
-                        text = article.category.uppercase(),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = article.title,
-                        style = MaterialTheme.typography.headlineLarge,
-                        lineHeight = 32.sp
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.LightGray),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(article.sourceName.take(1))
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(text = article.sourceName, fontWeight = FontWeight.Bold)
-                            Text(
-                                text = "${article.publishedAt.take(10)} • 4 min read",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Text(
-                        text = article.description ?: "No description available.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        lineHeight = 26.sp,
-                        color = Color.Gray
-                    )
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .statusBarsPadding()
+                        .padding(16.dp, 0.dp)
+                        .background(Color.Black.copy(alpha = 0.3f), CircleShape)
+                ) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Color.White)
                 }
             }
         }
@@ -187,13 +208,21 @@ fun DetailBottomBar(
         shadowElevation = 8.dp
     ) {
         Row(
-            modifier = Modifier.padding(16.dp).navigationBarsPadding(),
+            modifier = Modifier
+                .padding(16.dp)
+                .navigationBarsPadding(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Button(
                 onClick = onReadFullClick,
-                modifier = Modifier.weight(1f).height(50.dp),
-                shape = RoundedCornerShape(8.dp)
+                modifier = Modifier
+                    .weight(1f)
+                    .height(50.dp),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.surface
+                )
             ) {
                 Text("Read Full Article ↗")
             }
@@ -201,11 +230,15 @@ fun DetailBottomBar(
             FilledIconButton(
                 onClick = onBookmarkToggle,
                 modifier = Modifier.size(50.dp),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(8.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.surface
+                )
             ) {
                 Icon(
                     imageVector = if (isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                    contentDescription = "Toggle Saved State"
+                    contentDescription = "Toggle Bookmark"
                 )
             }
         }

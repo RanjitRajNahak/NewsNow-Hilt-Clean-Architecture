@@ -2,7 +2,17 @@ package com.example.newsnowapp.presentation.search
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -14,8 +24,22 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SearchOff
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,13 +48,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.newsnowapp.domain.model.Article
-import com.example.newsnowapp.domain.repository.NewsRepository
-import com.example.newsnowapp.presentation.util.Resource
 import com.example.newsnowapp.presentation.components.ArticleCard
-import kotlinx.coroutines.launch
+import com.example.newsnowapp.presentation.util.Resource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,10 +60,8 @@ fun SearchScreen(
     onArticleClick: (Article) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    val searchState = viewModel.searchResults.value
-
-    // ◀ NEW: Reference history lists directly out from view model state properties
-    val recentSearches = viewModel.recentSearches.value
+    val searchState by viewModel.searchResults.collectAsState()
+    val recentSearches by viewModel.recentSearches.collectAsState()
 
     Scaffold(
         topBar = {
@@ -56,38 +74,39 @@ fun SearchScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            // ... Inside your SearchScreen Composable function ...
-            val keyboardController = LocalSoftwareKeyboardController.current // ◀ ADD THIS to hide keyboard manually
+            val keyboardController = LocalSoftwareKeyboardController.current
+
             // Search Bar
             OutlinedTextField(
                 value = searchQuery,
-                onValueChange = { searchQuery = it },
+                onValueChange = { searchQuery = it
+                                viewModel.searchNews(searchQuery)},
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                 placeholder = { Text("Search topics...") },
                 trailingIcon = {
-                    IconButton(onClick = { viewModel.searchNews(searchQuery) }) {
+                    IconButton(onClick = { viewModel.searchNews(searchQuery)
+                                            viewModel.addQueryToHistory(searchQuery.trim())
+                    }) {
                         Icon(Icons.Default.Search, contentDescription = "Search")
                     }
                 },
                 singleLine = true,
 
-                // ◀ NEW: Configure keyboard to show a Magnifying Glass / Search icon instead of generic tick
                 keyboardOptions = KeyboardOptions(
                     imeAction = ImeAction.Search
                 ),
 
-                // ◀ NEW: Handle the keyboard action click event
                 keyboardActions = KeyboardActions(
                     onSearch = {
                         if (searchQuery.isNotBlank()) {
-                            viewModel.searchNews(searchQuery) // Trigger search execution
-                            keyboardController?.hide()        // Dismiss the keyboard cleanly
+                            viewModel.searchNews(searchQuery)
+                            viewModel.addQueryToHistory(searchQuery.trim())
+                            keyboardController?.hide()
                         }
                     }
                 )
             )
 
-            // ◀ NEW: Recent Searches Section (Horizontal Chips Row Container)
             if (recentSearches.isNotEmpty()) {
                 Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                     Text(
@@ -105,12 +124,11 @@ fun SearchScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         recentSearches.forEach { queryText ->
-                            // Custom Input Chip design matching Material 3 architecture standards
                             InputChip(
                                 selected = false,
                                 onClick = {
-                                    searchQuery = queryText // Populate search bar input field
-                                    viewModel.searchNews(queryText) // Force executing query action
+                                    searchQuery = queryText
+                                    viewModel.searchNews(queryText)
                                 },
                                 label = { Text(queryText) },
                                 trailingIcon = {
@@ -120,7 +138,7 @@ fun SearchScreen(
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Close,
-                                            contentDescription = "Remove search term",
+                                            contentDescription = "Remove search History",
                                             modifier = Modifier.size(12.dp)
                                         )
                                     }
@@ -140,8 +158,7 @@ fun SearchScreen(
                     is Resource.Success -> {
                         val articles = searchState.data ?: emptyList()
 
-                        if (articles.isEmpty() && searchQuery.isNotEmpty()) {
-                            // ◀ NEW: Requirement 4 — Custom No Results illustration layout
+                        if (articles.isEmpty() && searchQuery.isNotEmpty() || searchQuery.isEmpty()) {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -150,12 +167,12 @@ fun SearchScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                             ) {
-                                // Large Magnifier Illustration style icon element
+
                                 Box(
                                     modifier = Modifier
                                         .size(80.dp)
                                         .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                        .background(MaterialTheme.colorScheme.surfaceVariant), //slight variant or grayish from surface
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
@@ -169,21 +186,21 @@ fun SearchScreen(
                                 Spacer(modifier = Modifier.height(16.dp))
 
                                 Text(
-                                    text = "No results for '$searchQuery'",
+                                    text = "No results",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     textAlign = TextAlign.Center
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "Check your spelling or try searching for another keyword.",
+                                    text = searchState.message ?: "Check your spelling or try searching for another keyword.",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = TextAlign.Center
                                 )
                             }
                         } else {
-                            // Show results standard data rows list when available
+
                             LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(bottom = 16.dp)

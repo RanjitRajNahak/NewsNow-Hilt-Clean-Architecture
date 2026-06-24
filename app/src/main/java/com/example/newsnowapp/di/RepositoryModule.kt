@@ -1,6 +1,8 @@
 package com.example.newsnowapp.di
 
+import com.example.newsnowapp.data.repository.AuthRepositoryImpl
 import com.example.newsnowapp.data.repository.NewsRepositoryImpl
+import com.example.newsnowapp.domain.repository.AuthRepository
 import com.example.newsnowapp.domain.repository.NewsRepository
 import dagger.Binds
 import dagger.Module
@@ -17,4 +19,10 @@ abstract class RepositoryModule {
     abstract fun bindNewsRepository(
         newsRepositoryImpl: NewsRepositoryImpl
     ): NewsRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAuthRepository(
+        authRepositoryImpl: AuthRepositoryImpl
+    ): AuthRepository
 }
