@@ -25,7 +25,7 @@ It also supports keyword-based search, bookmarking, authentication, theme custom
 - 🔐 User authentication with register and login
 - 💾 Shared Preferences for storing recent search queries
 - ⚙️ Dependency Injection using Dagger Hilt
-- 🧱 MVVM architecture with Repository and ViewModel layers
+- 🧱 Clean architecture with Repository and ViewModel layers
 - 🖼️ Image loading using Coil
 - 🌐 API calls using Retrofit
 
@@ -66,30 +66,6 @@ It also supports keyword-based search, bookmarking, authentication, theme custom
 
 ---
 
-## 🧱 Architecture
-
-NewsNow follows a clean **MVVM architecture** pattern:
-
-```text
-UI Layer
-│
-├── Jetpack Compose Screens
-├── ViewModels
-│
-Domain / Data Layer
-│
-├── Repositories
-├── Retrofit API Service
-├── Room DAO
-├── Shared Preferences Manager
-│
-Data Sources
-│
-├── NewsAPI.org
-├── Room Database
-└── SQLite
-```
-
 ### Architecture Flow
 
 ```text
@@ -102,51 +78,6 @@ Repository
 Retrofit API / Room Database / Shared Preferences
     ↓
 Data returned to UI as state
-```
-
----
-
-## 📂 Suggested Project Structure
-
-```text
-NewsNow/
-│
-├── app/
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── java/com/example/newsnow/
-│   │   │   │   ├── data/
-│   │   │   │   │   ├── local/
-│   │   │   │   │   │   ├── dao/
-│   │   │   │   │   │   ├── database/
-│   │   │   │   │   │   └── entity/
-│   │   │   │   │   ├── remote/
-│   │   │   │   │   │   ├── api/
-│   │   │   │   │   │   └── model/
-│   │   │   │   │   └── repository/
-│   │   │   │   │
-│   │   │   │   ├── di/
-│   │   │   │   │   └── AppModule.kt
-│   │   │   │   │
-│   │   │   │   ├── preferences/
-│   │   │   │   │
-│   │   │   │   ├── ui/
-│   │   │   │   │   ├── screens/
-│   │   │   │   │   ├── components/
-│   │   │   │   │   ├── navigation/
-│   │   │   │   │   └── theme/
-│   │   │   │   │
-│   │   │   │   ├── viewmodel/
-│   │   │   │   │
-│   │   │   │   └── MainActivity.kt
-│   │   │   │
-│   │   │   └── AndroidManifest.xml
-│   │
-│   └── build.gradle.kts
-│
-├── build.gradle.kts
-├── settings.gradle.kts
-└── README.md
 ```
 
 ---
@@ -201,12 +132,6 @@ Add your NewsAPI key:
 
 ```properties
 NEWS_API_KEY=your_news_api_key_here
-```
-
-Example:
-
-```properties
-NEWS_API_KEY=1234567890abcdef1234567890abcdef
 ```
 
 > Do not commit your API key to GitHub.
@@ -462,16 +387,6 @@ screenshots/bookmarks.png
 screenshots/webview.png
 ```
 
-Suggested folder structure:
-
-```text
-screenshots/
-├── home.png
-├── search.png
-├── bookmarks.png
-└── webview.png
-```
-
 ---
 
 ## 🔗 Useful Links
@@ -486,34 +401,6 @@ screenshots/
 
 ---
 
-## 🤝 Contributing
-
-Contributions are welcome.
-
-To contribute:
-
-1. Fork the repository
-2. Create a new branch
-
-```bash
-git checkout -b feature/your-feature-name
-```
-
-3. Commit your changes
-
-```bash
-git commit -m "Add your feature"
-```
-
-4. Push to your branch
-
-```bash
-git push origin feature/your-feature-name
-```
-
-5. Create a Pull Request
-
----
 
 ## 📌 Git Commands
 
@@ -564,35 +451,11 @@ This project is licensed under the MIT License.
 MIT License
 ```
 
-You can replace this section with your actual license file if needed.
-
 ---
 
 ## 👨‍💻 Author
 
 **Ranjit Raj Nahak**
-
-GitHub:
-
-```text
-https://github.com/your-username
-```
-
-LinkedIn:
-
-```text
-https://linkedin.com/in/your-profile
-```
-
----
-
-## ⭐ Support
-
-If you like this project, consider giving it a star on GitHub.
-
-```text
-⭐ Star this repository to support the project.
-```
 
 ---
 
