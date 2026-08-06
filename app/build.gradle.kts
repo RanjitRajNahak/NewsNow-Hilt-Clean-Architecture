@@ -83,4 +83,8 @@ dependencies {
     // Dagger Hilt (DI)
     implementation("com.google.dagger:hilt-android:2.59.2")
     ksp("com.google.dagger:hilt-android-compiler:2.59.2")
+
+    // WorkManager dependency
+    val workVersion = "2.9.0" // Check for the latest stable version
+    implementation("androidx.work:work-runtime-ktx:$workVersion")
 }

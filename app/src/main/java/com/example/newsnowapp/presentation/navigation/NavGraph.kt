@@ -20,6 +20,7 @@ import com.google.gson.Gson
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import androidx.navigation.navDeepLink
 
 sealed class Screen(val route: String) {
     object Login: Screen("login")
@@ -119,18 +120,49 @@ fun NavGraph(
             )
         }
 
-        // Detail Screen
-        composable(route = Screen.Detail.route) { backStackEntry ->
-            val encodedJson = backStackEntry.arguments?.getString("articleJson") ?: ""
-
-            val decodedJson = URLDecoder.decode(encodedJson, StandardCharsets.UTF_8.toString())
-
-            val article = Gson().fromJson(decodedJson, Article::class.java)
+        // Detail Screen inside NavGraph.kt
+        composable(
+            route = Screen.Detail.route,
+            deepLinks = listOf(
+                navDeepLink {
+                    uriPattern = "newsnow://${Screen.Detail.route}"
+                }
+            )
+        ) { backStackEntry ->
+            val article = try {
+                val encodedJson = backStackEntry.arguments?.getString("articleJson") ?: ""
+                // Double decode to handle both NavGraph encoding and Deep Link Uri escaping
+                val decodedJson = URLDecoder.decode(encodedJson, StandardCharsets.UTF_8.toString())
+                Gson().fromJson(decodedJson, Article::class.java)
+            } catch (e: Exception) {
+                // Fallback dummy article if deep link serialization was corrupted by URI query symbols
+                Article(
+                    url = "https://newsapi.org",
+                    title = "Error loading article",
+                    author = "",
+                    sourceName = "Error",
+                    description = "Could not parse deep link content.",
+                    urlToImage = "",
+                    publishedAt = "",
+                    content = "",
+                    category = "News"
+                )
+            }
 
             DetailScreen(
                 article = article,
                 viewModel = detailViewModel,
-                onBack = { navController.popBackStack() })
+                onBack = {
+                    // If we deep-linked into the app, back should take us to Home
+                    if (navController.previousBackStackEntry == null) {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    } else {
+                        navController.popBackStack()
+                    }
+                }
+            )
         }
 
         // Search Screen

@@ -1,5 +1,14 @@
 package com.example.newsnowapp.presentation.home
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -55,15 +64,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import coil.compose.AsyncImage
+import com.example.newsnowapp.data.worker.HeadlineWorker
 import com.example.newsnowapp.domain.model.Article
 import com.example.newsnowapp.presentation.components.ArticleCard
 import com.example.newsnowapp.presentation.util.Resource
 import kotlinx.coroutines.delay
+import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,6 +96,63 @@ fun HomeScreen(
     onBookmarksClick: () -> Unit,
     onLogoutNavigation: () -> Unit
 ) {
+    val context = LocalContext.current
+
+    // Register a permission request launcher (For Android 13+)
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // If the user accepts, begin our headline delivery background task
+            scheduleHeadlinesWorker(context)
+        } else {
+            Toast.makeText(context, "Notification permission denied", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Automatically ask for notification permission on first launch
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Android 13+: Check the runtime permission directly
+            val hasRuntimePermission = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (hasRuntimePermission) {
+                scheduleHeadlinesWorker(context)
+            } else {
+                // This will pop up the native system dialog automatically
+                permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        } else {
+            // Android 12 & Below: No runtime permission exists.
+            // Check the master switch directly.
+            val isEnabledGlobally = NotificationManagerCompat.from(context).areNotificationsEnabled()
+
+            if (isEnabledGlobally) {
+                scheduleHeadlinesWorker(context)
+            } else {
+                // Direct them to settings since we can't show a popup on older OS versions
+                Toast.makeText(context, "Please enable notifications in settings!", Toast.LENGTH_LONG).show()
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.fromParts("package", context.packageName, null)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                context.startActivity(intent)
+            }
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(text = "Periodic Headline Delivery Active!")
+    }
+
+
     val homeArticles by viewModel.homeArticles.collectAsState()
     val breakingState = homeArticles.breakingArticles
     val generalState = homeArticles.generalArticles
@@ -188,7 +265,7 @@ fun HomeScreen(
                         val totalItems = breakingState.data.size
                         if (totalItems > 1) {
                             while (true) {
-                                delay(3000)
+                                delay(4000)
 
                                 val nextItem = (carouselState.currentItem + 1) % totalItems
 
@@ -324,3 +401,31 @@ fun HomeScreen(
     }
 }
 
+// Helper to register our background headline task with WorkManager
+private fun scheduleHeadlinesWorker(context: android.content.Context) {
+    // Define triggers: e.g. only run when the user has an active internet connection
+    val constraints = Constraints.Builder()
+        .setRequiredNetworkType(NetworkType.CONNECTED)
+        .build()
+
+//    // Create a periodic worker scheduled to execute every 4 hours
+//    val periodicWorkRequest = PeriodicWorkRequestBuilder<HeadlineWorker>(4, TimeUnit.HOURS)
+//        .setConstraints(constraints)
+//        .build()
+//
+//    // Enqueue the work! ExistingPeriodicWorkPolicy.KEEP ensures we don't restart the timer if the app is reopened
+//    WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+//        "periodic_headline_delivery",
+//        ExistingPeriodicWorkPolicy.KEEP,
+//        periodicWorkRequest
+//    )
+
+    // Creates a single, upon opening landing page immediate execution task delayed by just 5 seconds!
+    val testWorkRequest = OneTimeWorkRequestBuilder<HeadlineWorker>()
+        .setConstraints(constraints)
+        .setInitialDelay(5, TimeUnit.SECONDS)
+        .build()
+
+    // Enqueue it immediately
+    WorkManager.getInstance(context).enqueue(testWorkRequest)
+}

@@ -1,5 +1,6 @@
 package com.example.newsnowapp
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -12,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.example.newsnowapp.presentation.auth.AuthViewModel
 import com.example.newsnowapp.presentation.bookmarks.BookmarksViewModel
@@ -31,22 +33,27 @@ class MainActivity : ComponentActivity() {
     private val detailViewModel: DetailViewModel by viewModels()
     private val bookmarksViewModel: BookmarksViewModel by viewModels()
 
+    // 1. Class level property holds the reference
+    private var navController: NavHostController? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         setContent {
-
             val systemInDark = isSystemInDarkTheme()
             var isDarkTheme by remember { mutableStateOf(systemInDark) }
+
             NewsNowAppTheme(darkTheme = isDarkTheme) {
 
-                val navController = rememberNavController()
+                // 2. Assign the controller to the class-level variable (NO 'val' keyword before navController!)
+                val controller = rememberNavController().also {
+                    navController = it
+                }
 
                 Surface(color = MaterialTheme.colorScheme.background) {
-
                     NavGraph(
-                        navController = navController,
+                        navController = controller, // Use the assigned controller
                         authViewModel = authViewModel,
                         homeViewModel = homeViewModel,
                         searchViewModel = searchViewModel,
@@ -58,5 +65,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    // Handles deep links when the app is already running in the background
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        navController?.handleDeepLink(intent)
     }
 }
